@@ -28,7 +28,7 @@ A full-stack, agent-driven weather application that uses an LLM (via LangChain) 
 | Frontend | React 19 + Vite |
 | Agent Backend | Python, FastAPI, LangChain, LangGraph |
 | MCP Server | Python, FastAPI, httpx |
-| LLM | OpenAI GPT-4o-mini |
+| LLM | Anthropic Claude (claude-sonnet-4-20250514) |
 | External API | OpenWeatherMap (Current Weather, 5-Day Forecast, Air Pollution) |
 
 ## Project Structure
@@ -64,7 +64,7 @@ A full-stack, agent-driven weather application that uses an LLM (via LangChain) 
 - **Python 3.9+**
 - **Node.js 18+** and npm
 - **OpenWeatherMap API Key** (free tier)
-- **OpenAI API Key**
+- **Anthropic API Key**
 
 ## Setup & Running
 
@@ -80,7 +80,7 @@ cp .env.example .env
 
 Edit `.env` and add your API keys:
 - **OpenWeatherMap**: Sign up at [openweathermap.org](https://openweathermap.org/api) → API Keys section (free tier)
-- **OpenAI**: Get a key at [platform.openai.com/api-keys](https://platform.openai.com/api-keys)
+- **Anthropic**: Get a key at [console.anthropic.com/settings/keys](https://console.anthropic.com/settings/keys)
 
 ### 2. Start the MCP Server (Port 8001)
 
@@ -152,7 +152,7 @@ The agent will automatically select the appropriate tool(s), fetch data via the 
 ## Key Design Decisions
 
 - **Separation of Concerns**: The MCP Server handles all external API communication, while the Agent Backend focuses on LLM orchestration. This makes each service independently testable and deployable.
-- **Tool Calling via LangChain**: The agent uses LangGraph's `create_react_agent` with OpenAI function calling to decide which weather tools to invoke based on the user's query.
+- **Tool Calling via LangChain**: The agent uses LangGraph's `create_react_agent` with Anthropic Claude's tool calling to decide which weather tools to invoke based on the user's query.
 - **API Key Security**: All secrets are loaded from environment variables via `.env`, never hardcoded or committed to version control.
 - **Vite Proxy**: The frontend proxies `/api` requests to the backend, avoiding CORS issues in development.
 

@@ -1,8 +1,7 @@
-from langchain_openai import ChatOpenAI
-from langchain_core.messages import SystemMessage, HumanMessage, AIMessage
-from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
+from langchain_anthropic import ChatAnthropic
+from langchain_core.messages import HumanMessage, AIMessage
 from langgraph.prebuilt import create_react_agent
-from config import OPENAI_API_KEY
+from config import ANTHROPIC_API_KEY
 from tools import ALL_TOOLS
 
 SYSTEM_PROMPT = """You are a helpful weather assistant. You provide accurate, friendly, and
@@ -26,10 +25,11 @@ Guidelines:
 
 def create_weather_agent():
     """Create and return a LangChain weather agent with tool-calling capabilities."""
-    llm = ChatOpenAI(
-        model="gpt-4o-mini",
-        api_key=OPENAI_API_KEY,
+    llm = ChatAnthropic(
+        model="claude-sonnet-4-20250514",
+        api_key=ANTHROPIC_API_KEY,
         temperature=0.3,
+        max_tokens=1024,
     )
 
     agent = create_react_agent(
