@@ -16,8 +16,15 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Create the agent once at startup
-weather_agent = create_weather_agent()
+# Lazy agent initialization (created on first request so the server can start without keys)
+_weather_agent = None
+
+
+def get_agent():
+    global _weather_agent
+    if _weather_agent is None:
+        _weather_agent = create_weather_agent()
+    return _weather_agent
 
 
 class ChatRequest(BaseModel):
@@ -42,7 +49,8 @@ async def chat(request: ChatRequest):
         raise HTTPException(status_code=400, detail="Message cannot be empty.")
 
     try:
-        result = await run_agent(weather_agent, request.message, request.chat_history)
+        agent = get_agent()
+        result = await run_agent(agent, request.message, request.chat_history)
         return ChatResponse(**result)
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Agent error: {str(e)}")
