@@ -1,3 +1,5 @@
+import Markdown from "react-markdown";
+
 export default function MessageBubble({ role, content, toolCalls }) {
   return (
     <div className={`message ${role}`}>
@@ -6,12 +8,11 @@ export default function MessageBubble({ role, content, toolCalls }) {
       </div>
       <div>
         <div className="message-content">
-          {content.split("\n").map((line, i) => (
-            <span key={i}>
-              {line}
-              {i < content.split("\n").length - 1 && <br />}
-            </span>
-          ))}
+          {role === "assistant" ? (
+            <Markdown>{content}</Markdown>
+          ) : (
+            content
+          )}
         </div>
         {toolCalls && toolCalls.length > 0 && (
           <div className="tool-calls">
