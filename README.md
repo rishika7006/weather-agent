@@ -34,28 +34,42 @@ A full-stack, agent-driven weather application that uses an LLM (via LangChain) 
 ## Project Structure
 
 ```
-├── mcp-server/              # MCP Server - OpenWeatherMap API wrapper
-│   ├── main.py              # FastAPI endpoints
-│   ├── config.py            # Environment configuration
+├── mcp-server/                    # MCP Server - OpenWeatherMap API wrapper
+│   ├── main.py                    # FastAPI endpoints
+│   ├── config.py                  # Environment configuration
 │   ├── requirements.txt
-│   └── services/
-│       └── weather_service.py   # OpenWeatherMap API client
-├── backend/                 # LLM Agent Backend
-│   ├── main.py              # FastAPI chat endpoint
-│   ├── agent.py             # LangChain agent with tool calling
-│   ├── tools.py             # Tool definitions (calls MCP Server)
-│   ├── config.py            # Environment configuration
-│   └── requirements.txt
-├── frontend/                # React Frontend
+│   ├── services/
+│   │   ├── weather_service.py     # Weather service with caching
+│   │   ├── lfu_cache.py           # LFU cache implementation
+│   │   └── providers/
+│   │       ├── base.py            # Abstract weather provider
+│   │       └── openweathermap.py  # OpenWeatherMap provider
+│   └── tests/                     # MCP Server test suite
+├── backend/                       # LLM Agent Backend
+│   ├── main.py                    # FastAPI chat endpoint
+│   ├── agent.py                   # LangChain agent with tool calling
+│   ├── tools.py                   # Tool definitions (calls MCP Server)
+│   ├── direct_weather.py          # Direct weather utility
+│   ├── config.py                  # Environment configuration
+│   ├── requirements.txt
+│   └── tests/                     # Backend test suite
+├── frontend/                      # React Frontend
 │   ├── src/
-│   │   ├── App.jsx          # Root component
-│   │   ├── App.css          # Styles
+│   │   ├── App.jsx                # Root component with tab navigation
+│   │   ├── App.css                # Styles
 │   │   └── components/
-│   │       ├── ChatInterface.jsx   # Chat container
-│   │       └── MessageBubble.jsx   # Message display
-│   ├── vite.config.js       # Vite config with API proxy
+│   │       ├── ChatInterface.jsx  # Chat container
+│   │       ├── MessageBubble.jsx  # Message display with markdown
+│   │       ├── AgentPanel.jsx     # Agent architecture panel
+│   │       ├── ArchitecturePanel.jsx
+│   │       ├── DeploymentPanel.jsx
+│   │       ├── ExperiencePanel.jsx
+│   │       ├── HelpPanel.jsx
+│   │       └── ImprovementsPanel.jsx
+│   ├── vite.config.js             # Vite config with API proxy
 │   └── package.json
-├── .env.example             # Environment variable template
+├── .env.example                   # Environment variable template
+├── agents.md                      # Agent design documentation
 └── README.md
 ```
 
