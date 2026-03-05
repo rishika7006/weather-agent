@@ -1,128 +1,44 @@
-import httpx
-from config import OPENWEATHER_API_KEY, OPENWEATHER_BASE_URL
+from services.providers.base import WeatherProvider
+from services.lfu_cache import LFUCache
 
 
 class WeatherService:
-    """Wrapper around the OpenWeatherMap API."""
+    """Provider-agnostic weather service with LFU caching.
 
-    def __init__(self):
-        self.api_key = OPENWEATHER_API_KEY
-        self.base_url = OPENWEATHER_BASE_URL
-        self.client = httpx.AsyncClient(timeout=10.0)
+    Delegates all API calls to a pluggable WeatherProvider and wraps
+    them with a cache-aside caching layer.
+    """
 
-    async def _geocode(self, city: str) -> dict:
-        """Convert a city name to latitude/longitude using OpenWeatherMap Geocoding API."""
-        url = f"{self.base_url}/geo/1.0/direct"
-        params = {"q": city, "limit": 1, "appid": self.api_key}
-        resp = await self.client.get(url, params=params)
-        resp.raise_for_status()
-        data = resp.json()
-        if not data:
-            raise ValueError(f"City '{city}' not found.")
-        return {
-            "lat": data[0]["lat"],
-            "lon": data[0]["lon"],
-            "name": data[0].get("name", city),
-            "country": data[0].get("country", ""),
-        }
+    def __init__(self, provider: WeatherProvider):
+        self.provider = provider
+        self.cache = LFUCache(capacity=128, ttl_seconds=300)
 
-    async def get_current_weather(self, city: str) -> dict:
-        """Fetch current weather for a city."""
-        geo = await self._geocode(city)
-        url = f"{self.base_url}/data/2.5/weather"
-        params = {
-            "lat": geo["lat"],
-            "lon": geo["lon"],
-            "appid": self.api_key,
-            "units": "imperial",
-        }
-        resp = await self.client.get(url, params=params)
-        resp.raise_for_status()
-        data = resp.json()
-        return {
-            "city": geo["name"],
-            "country": geo["country"],
-            "temperature_f": data["main"]["temp"],
-            "feels_like_f": data["main"]["feels_like"],
-            "humidity": data["main"]["humidity"],
-            "description": data["weather"][0]["description"],
-            "icon": data["weather"][0]["icon"],
-            "wind_speed_mph": data["wind"]["speed"],
-            "pressure_hpa": data["main"]["pressure"],
-            "visibility_m": data.get("visibility", "N/A"),
-        }
+    async def get_current_weather(self, city: str) -> tuple[dict, bool]:
+        cache_key = f"current:{city.lower().strip()}"
+        cached = self.cache.get(cache_key)
+        if cached is not None:
+            return cached, True
 
-    async def get_forecast(self, city: str, days: int = 3) -> dict:
-        """Fetch multi-day weather forecast (up to 5 days, 3-hour intervals)."""
-        geo = await self._geocode(city)
-        url = f"{self.base_url}/data/2.5/forecast"
-        params = {
-            "lat": geo["lat"],
-            "lon": geo["lon"],
-            "appid": self.api_key,
-            "units": "imperial",
-            "cnt": min(days, 5) * 8,  # 8 intervals per day (3-hour steps)
-        }
-        resp = await self.client.get(url, params=params)
-        resp.raise_for_status()
-        data = resp.json()
+        result = await self.provider.get_current_weather(city)
+        self.cache.put(cache_key, result)
+        return result, False
 
-        # Group by date and summarize each day
-        daily = {}
-        for entry in data["list"]:
-            date = entry["dt_txt"].split(" ")[0]
-            if date not in daily:
-                daily[date] = {
-                    "date": date,
-                    "temps": [],
-                    "descriptions": [],
-                    "humidity": [],
-                }
-            daily[date]["temps"].append(entry["main"]["temp"])
-            daily[date]["descriptions"].append(entry["weather"][0]["description"])
-            daily[date]["humidity"].append(entry["main"]["humidity"])
+    async def get_forecast(self, city: str, days: int = 3) -> tuple[dict, bool]:
+        cache_key = f"forecast:{city.lower().strip()}:{days}"
+        cached = self.cache.get(cache_key)
+        if cached is not None:
+            return cached, True
 
-        forecast_days = []
-        for date, info in list(daily.items())[:days]:
-            forecast_days.append({
-                "date": info["date"],
-                "temp_high_f": round(max(info["temps"]), 1),
-                "temp_low_f": round(min(info["temps"]), 1),
-                "avg_humidity": round(sum(info["humidity"]) / len(info["humidity"]), 1),
-                "conditions": max(set(info["descriptions"]), key=info["descriptions"].count),
-            })
+        result = await self.provider.get_forecast(city, days)
+        self.cache.put(cache_key, result)
+        return result, False
 
-        return {
-            "city": geo["name"],
-            "country": geo["country"],
-            "forecast": forecast_days,
-        }
+    async def get_air_quality(self, city: str) -> tuple[dict, bool]:
+        cache_key = f"air:{city.lower().strip()}"
+        cached = self.cache.get(cache_key)
+        if cached is not None:
+            return cached, True
 
-    async def get_air_quality(self, city: str) -> dict:
-        """Fetch air quality index for a city."""
-        geo = await self._geocode(city)
-        url = f"{self.base_url}/data/2.5/air_pollution"
-        params = {
-            "lat": geo["lat"],
-            "lon": geo["lon"],
-            "appid": self.api_key,
-        }
-        resp = await self.client.get(url, params=params)
-        resp.raise_for_status()
-        data = resp.json()
-
-        aqi = data["list"][0]["main"]["aqi"]
-        components = data["list"][0]["components"]
-        aqi_labels = {1: "Good", 2: "Fair", 3: "Moderate", 4: "Poor", 5: "Very Poor"}
-
-        return {
-            "city": geo["name"],
-            "country": geo["country"],
-            "aqi": aqi,
-            "aqi_label": aqi_labels.get(aqi, "Unknown"),
-            "pm2_5": components.get("pm2_5"),
-            "pm10": components.get("pm10"),
-            "co": components.get("co"),
-            "no2": components.get("no2"),
-            "o3": components.get("o3"),
-        }
+        result = await self.provider.get_air_quality(city)
+        self.cache.put(cache_key, result)
+        return result, False

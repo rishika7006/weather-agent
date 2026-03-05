@@ -61,6 +61,8 @@ export default function ChatInterface() {
           role: "assistant",
           content: data.response,
           toolCalls: data.tool_calls,
+          cached: data.cached,
+          fallback: data.fallback,
         },
       ]);
     } catch (err) {
@@ -105,6 +107,8 @@ export default function ChatInterface() {
             role={msg.role}
             content={msg.content}
             toolCalls={msg.toolCalls}
+            cached={msg.cached}
+            fallback={msg.fallback}
           />
         ))}
 

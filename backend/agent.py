@@ -1,8 +1,8 @@
 from langchain_anthropic import ChatAnthropic
-from langchain_core.messages import HumanMessage, AIMessage
+from langchain_core.messages import HumanMessage, AIMessage, ToolMessage
 from langgraph.prebuilt import create_react_agent
 from config import ANTHROPIC_API_KEY
-from tools import ALL_TOOLS
+from tools import ALL_TOOLS, CACHED_MARKER, FALLBACK_MARKER
 
 SYSTEM_PROMPT = """You are a helpful weather assistant. You provide accurate, friendly, and
 concise weather information to users.
@@ -67,6 +67,8 @@ async def run_agent(agent, message: str, chat_history: list = None) -> dict:
     # Extract the final AI response and any tool calls
     response_text = ""
     tool_calls_made = []
+    any_cached = False
+    any_fallback = False
 
     for msg in result["messages"]:
         if hasattr(msg, "tool_calls") and msg.tool_calls:
@@ -75,10 +77,18 @@ async def run_agent(agent, message: str, chat_history: list = None) -> dict:
                     "tool": tc["name"],
                     "args": tc["args"],
                 })
+        if isinstance(msg, ToolMessage):
+            content = msg.content or ""
+            if CACHED_MARKER in content:
+                any_cached = True
+            if FALLBACK_MARKER in content:
+                any_fallback = True
         if isinstance(msg, AIMessage) and msg.content and not msg.tool_calls:
             response_text = msg.content
 
     return {
         "response": response_text,
         "tool_calls": tool_calls_made,
+        "cached": any_cached,
+        "fallback": any_fallback,
     }

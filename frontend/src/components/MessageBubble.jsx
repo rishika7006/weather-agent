@@ -1,6 +1,6 @@
 import Markdown from "react-markdown";
 
-export default function MessageBubble({ role, content, toolCalls }) {
+export default function MessageBubble({ role, content, toolCalls, cached, fallback }) {
   return (
     <div className={`message ${role}`}>
       <div className="message-avatar">
@@ -21,6 +21,12 @@ export default function MessageBubble({ role, content, toolCalls }) {
                 {tc.tool}({Object.values(tc.args).join(", ")})
               </span>
             ))}
+          </div>
+        )}
+        {(cached || fallback) && (
+          <div className="status-badges">
+            {cached && <span className="cached-badge">(cached)</span>}
+            {fallback && <span className="fallback-badge">(fallback - MCP server unavailable)</span>}
           </div>
         )}
       </div>

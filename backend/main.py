@@ -1,6 +1,7 @@
+import os
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from agent import create_weather_agent, run_agent
 
 app = FastAPI(
@@ -9,11 +10,13 @@ app = FastAPI(
     version="1.0.0",
 )
 
+ALLOWED_ORIGINS = os.getenv("ALLOWED_ORIGINS", "http://localhost:5173,http://localhost:3000").split(",")
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_origins=ALLOWED_ORIGINS,
+    allow_methods=["GET", "POST"],
+    allow_headers=["Content-Type"],
 )
 
 # Lazy agent initialization (created on first request so the server can start without keys)
@@ -28,13 +31,15 @@ def get_agent():
 
 
 class ChatRequest(BaseModel):
-    message: str
+    message: str = Field(..., max_length=1000)
     chat_history: list = []
 
 
 class ChatResponse(BaseModel):
     response: str
     tool_calls: list = []
+    cached: bool = False
+    fallback: bool = False
 
 
 @app.get("/health")
@@ -52,8 +57,8 @@ async def chat(request: ChatRequest):
         agent = get_agent()
         result = await run_agent(agent, request.message, request.chat_history)
         return ChatResponse(**result)
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Agent error: {str(e)}")
+    except Exception:
+        raise HTTPException(status_code=500, detail="An internal error occurred. Please try again.")
 
 
 if __name__ == "__main__":
