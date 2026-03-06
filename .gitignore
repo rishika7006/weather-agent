@@ -19,7 +19,6 @@ dist/
 *.log
 
 # Project docs (not for repo)
-prompts.md
 video_script.md
 
 # Cache
